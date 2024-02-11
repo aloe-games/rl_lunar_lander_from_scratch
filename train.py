@@ -74,7 +74,7 @@ for episode in range(episodes):
                 future_rewards = target(torch.Tensor(numpy.stack(batch_next_observations, axis=0)))
                 current_rewards = agent(torch.Tensor(numpy.stack(batch_observations, axis=0)))
             for i in range(batch_size):
-                current_rewards[i][batch_actions[i]] = batch_rewards[i] + 0.99 * future_rewards[i].max().item()
+                current_rewards[i][batch_actions[i]] = batch_rewards[i] + 0.99 * future_rewards[i].max().item() * (1 - batch_dones[i])
 
             pred = agent(torch.Tensor(numpy.stack(batch_observations, axis=0)))
             loss = loss_fn(pred, current_rewards)
