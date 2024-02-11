@@ -1,19 +1,29 @@
 import random
-
 import numpy
 import torch
 from torch import nn
-
-from q_network import QNetwork
-
-agent = QNetwork(8, 4)
-target = QNetwork(8, 4)
-target.load_state_dict(agent.state_dict())
-loss_fn = nn.functional.mse_loss
-optimizer = torch.optim.Adam(agent.parameters(), lr=5e-4)
-
 from collections import deque
 import gymnasium as gym
+from q_network import QNetwork
+
+observation_space = 8
+action_space = 4
+
+eps_start = 1.0
+eps_end = 0.01
+eps_decay = 0.995
+eps = eps_start
+
+batch_size = 64
+gamma = 0.99
+lr = 5e-4
+tau = 0.001
+
+agent = QNetwork(observation_space, action_space)
+target = QNetwork(observation_space, action_space)
+target.load_state_dict(agent.state_dict())
+loss_fn = nn.functional.mse_loss
+optimizer = torch.optim.Adam(agent.parameters(), lr=lr)
 
 env = gym.make("LunarLander-v2")
 
@@ -32,8 +42,6 @@ eps_decay = 0.995
 eps = eps_start
 
 step = 0
-best_model = None
-
 last_rewards = deque(maxlen=100)
 best_last_rewards = float("-inf")
 for episode in range(episodes):
@@ -84,7 +92,7 @@ for episode in range(episodes):
             target_state_dict = target.state_dict()
             agent_state_dict = agent.state_dict()
             for key in agent_state_dict:
-                target_state_dict[key] = agent_state_dict[key] * 0.001 + target_state_dict[key] * (1 - 0.001)
+                target_state_dict[key] = agent_state_dict[key] * tau + target_state_dict[key] * (1 - tau)
             target.load_state_dict(target_state_dict)
 
         episode_reward += reward
