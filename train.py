@@ -89,7 +89,7 @@ for episode in range(episodes):
         avg = numpy.mean(last_rewards)
         if episode % 10 == 0:
             print(episode, avg)
-        if avg >= 200.0:
+        if avg >= 230.0:
             print("Solved in {} episodes".format(episode))
             torch.save(agent.state_dict(), "model")
             break
