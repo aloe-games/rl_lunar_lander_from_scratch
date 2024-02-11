@@ -6,7 +6,9 @@ class QNetwork(nn.Module):
         super(QNetwork, self).__init__()
         self.network = nn.Sequential(
             nn.Linear(states, 64),
+            nn.ReLU(),
             nn.Linear(64, 64),
+            nn.ReLU(),
             nn.Linear(64, actions),
         )
 
