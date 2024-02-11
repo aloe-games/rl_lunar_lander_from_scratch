@@ -1,4 +1,3 @@
-import math
 import random
 
 import numpy
@@ -27,9 +26,9 @@ rewards = deque(maxlen=memory_size)
 next_observations = deque(maxlen=memory_size)
 dones = deque(maxlen=memory_size)
 
-eps_start = 0.9
-eps_end = 0.05
-eps_decay = 1000
+eps_start = 1.0
+eps_end = 0.01
+eps_decay = 0.995
 eps = eps_start
 
 step = 0
@@ -42,9 +41,8 @@ for episode in range(episodes):
     observation, _ = env.reset()
     while True:
         observations.append(observation)
-        eps_threshold = eps_end + (eps_start - eps_end) * math.exp(-1.0 * step / eps_decay)
         with torch.no_grad():
-            if random.random() > eps_threshold:
+            if random.random() > eps:
                 action = agent(torch.Tensor(observation)).argmax(dim=0).item()
             else:
                 action = env.action_space.sample()
@@ -93,6 +91,7 @@ for episode in range(episodes):
         step += 1
         if terminated or truncated:
             last_rewards.append(episode_reward)
+            eps = max(eps_end, eps_decay * eps)
             break
     if episode >= 100:
         avg = numpy.mean(last_rewards)
