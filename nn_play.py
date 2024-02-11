@@ -1,21 +1,9 @@
 import gymnasium as gym
 import torch
-from torch import nn
+
+from q_network import QNetwork
 
 env = gym.make("LunarLander-v2", render_mode="human")
-
-
-class QNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.network = nn.Sequential(
-            nn.Linear(8, 128),
-            nn.Linear(128, 128),
-            nn.Linear(128, 4),
-        )
-
-    def forward(self, x):
-        return self.network(x)
 
 
 agent = QNetwork()
