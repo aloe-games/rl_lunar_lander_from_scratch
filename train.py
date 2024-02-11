@@ -85,7 +85,7 @@ for episode in range(episodes):
             target_state_dict = target.state_dict()
             agent_state_dict = agent.state_dict()
             for key in agent_state_dict:
-                target_state_dict[key] = agent_state_dict[key] * 0.005 + target_state_dict[key] * (1 - 0.005)
+                target_state_dict[key] = agent_state_dict[key] * 0.001 + target_state_dict[key] * (1 - 0.001)
             target.load_state_dict(target_state_dict)
 
         episode_reward += reward
