@@ -30,16 +30,11 @@ env = gym.make("LunarLander-v2")
 episodes = 10000
 
 memory_size = 10000
-observations = deque(maxlen=memory_size)
-actions = deque(maxlen=memory_size)
-rewards = deque(maxlen=memory_size)
-next_observations = deque(maxlen=memory_size)
-dones = deque(maxlen=memory_size)
-
-eps_start = 1.0
-eps_end = 0.01
-eps_decay = 0.995
-eps = eps_start
+observations = torch.zeros(memory_size, observation_space, dtype=torch.float)
+actions = torch.zeros(memory_size, dtype=torch.uint8)
+rewards = torch.zeros(memory_size, dtype=torch.float)
+next_observations = torch.zeros(memory_size, observation_space, dtype=torch.float)
+dones = torch.zeros(memory_size, dtype=torch.uint8)
 
 step = 0
 last_rewards = deque(maxlen=100)
@@ -48,41 +43,29 @@ for episode in range(episodes):
     episode_reward = 0.0
     observation, _ = env.reset()
     while True:
-        observations.append(observation)
+        memory_index = step % memory_size
+        observations[memory_index] = torch.tensor(observation, dtype=torch.float)
         with torch.no_grad():
             if random.random() > eps:
                 action = agent(torch.Tensor(observation)).argmax(dim=0).item()
             else:
                 action = env.action_space.sample()
-        actions.append(action)
+        actions[memory_index] = torch.tensor(action, dtype=torch.uint8)
         observation, reward, terminated, truncated, _ = env.step(action)
-        rewards.append(reward)
-        next_observations.append(observation)
-        dones.append(int(terminated or truncated))
+        rewards[memory_index] = torch.tensor(reward, dtype=torch.float)
+        next_observations[memory_index] = torch.tensor(observation, dtype=torch.float)
+        dones[memory_index] = torch.tensor(terminated or truncated, dtype=torch.uint8)
 
         batch_size = 64
-        if len(observations) >= batch_size and step % 4 == 0:
-            batch_observations = []
-            batch_actions = []
-            batch_rewards = []
-            batch_next_observations = []
-            batch_dones = []
-            n = len(observations)
-            for _ in range(batch_size):
-                rnd = random.randrange(n)
-                batch_observations.append(observations[rnd])
-                batch_actions.append(actions[rnd])
-                batch_rewards.append(rewards[rnd])
-                batch_next_observations.append(next_observations[rnd])
-                batch_dones.append(dones[rnd])
-
+        if step >= batch_size and step % 4 == 0:
+            rnd = torch.randint(0, min(step, memory_size), (batch_size,))
             with torch.no_grad():
-                future_rewards = target(torch.Tensor(numpy.stack(batch_next_observations, axis=0))).detach()
-                current_rewards = agent(torch.Tensor(numpy.stack(batch_observations, axis=0))).detach()
+                future_rewards = target(next_observations.index_select(0, rnd)).detach()
+                current_rewards = agent(observations.index_select(0, rnd)).detach()
             for i in range(batch_size):
-                current_rewards[i][batch_actions[i]] = batch_rewards[i] + 0.99 * future_rewards[i].max().item() * (1 - batch_dones[i])
+                current_rewards[i][actions.index_select(0, rnd)[i].item()] = rewards.index_select(0, rnd)[i].item() + gamma * future_rewards[i].max().item() * (1 - dones.index_select(0, rnd)[i].item())
 
-            pred = agent(torch.Tensor(numpy.stack(batch_observations, axis=0)))
+            pred = agent(observations.index_select(0, rnd))
             loss = loss_fn(pred, current_rewards)
             loss.backward()
             torch.nn.utils.clip_grad_value_(agent.parameters(), 100)
