@@ -54,8 +54,8 @@ for episode in range(episodes):
         next_observations.append(observation)
         dones.append(int(terminated or truncated))
 
-        batch_size = 128
-        if len(observations) >= batch_size:
+        batch_size = 64
+        if len(observations) >= batch_size and step % 4 == 0:
             batch_observations = []
             batch_actions = []
             batch_rewards = []
@@ -96,7 +96,7 @@ for episode in range(episodes):
             last_rewards.append(episode_reward)
             break
     avg = numpy.mean(last_rewards)
-    if episode % 10 == 0:
+    if episode % 100 == 0:
         print(episode, avg)
     if avg >= best_last_rewards:
         best_last_rewards = avg
