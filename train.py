@@ -19,8 +19,10 @@ gamma = 0.99
 lr = 5e-4
 tau = 0.001
 
-agent = QNetwork(observation_space, action_space)
-target = QNetwork(observation_space, action_space)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+agent = QNetwork(observation_space, action_space).to(device)
+target = QNetwork(observation_space, action_space).to(device)
 target.load_state_dict(agent.state_dict())
 loss_fn = nn.functional.mse_loss
 optimizer = torch.optim.Adam(agent.parameters(), lr=lr)
@@ -30,11 +32,11 @@ env = gym.make("LunarLander-v2")
 episodes = 10000
 
 memory_size = 10000
-observations = torch.zeros(memory_size, observation_space, dtype=torch.float)
-actions = torch.zeros(memory_size, 1, dtype=torch.long)
-rewards = torch.zeros(memory_size, 1, dtype=torch.float)
-next_observations = torch.zeros(memory_size, observation_space, dtype=torch.float)
-dones = torch.zeros(memory_size, 1, dtype=torch.uint8)
+observations = torch.zeros(memory_size, observation_space, dtype=torch.float, device=device)
+actions = torch.zeros(memory_size, 1, dtype=torch.long, device=device)
+rewards = torch.zeros(memory_size, 1, dtype=torch.float, device=device)
+next_observations = torch.zeros(memory_size, observation_space, dtype=torch.float, device=device)
+dones = torch.zeros(memory_size, 1, dtype=torch.uint8, device=device)
 
 step = 0
 last_rewards = deque(maxlen=100)
@@ -47,7 +49,7 @@ for episode in range(episodes):
         observations[memory_index] = torch.tensor(observation, dtype=torch.float)
         with torch.no_grad():
             if random.random() > eps:
-                action = agent(torch.Tensor(observation)).argmax(dim=0).item()
+                action = agent(torch.tensor(observation, device=device)).argmax(dim=0).item()
             else:
                 action = env.action_space.sample()
         actions[memory_index] = torch.tensor(action, dtype=torch.long)
@@ -58,7 +60,7 @@ for episode in range(episodes):
 
         batch_size = 64
         if step >= batch_size and step % 4 == 0:
-            rnd = torch.randint(0, min(step, memory_size), (batch_size,))
+            rnd = torch.randint(0, min(step, memory_size), (batch_size,)).to(device)
             future_rewards = target(next_observations.index_select(0, rnd)).detach().max(1)[0].unsqueeze(1)
             current_rewards = rewards.index_select(0, rnd) + gamma * future_rewards * (1 - dones.index_select(0, rnd))
             pred = agent(observations.index_select(0, rnd)).gather(1, actions.index_select(0, rnd))

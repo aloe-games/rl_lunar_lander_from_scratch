@@ -14,7 +14,7 @@ total_reward = 0.0
 for i in range(episodes):
     observation, _ = env.reset()
     while True:
-        actions = agent(torch.Tensor(observation))
+        actions = agent(torch.tensor(observation))
         action = actions.argmax(dim=0).item()
         observation, reward, terminated, truncated, _ = env.step(action)
 
