@@ -31,10 +31,10 @@ episodes = 10000
 
 memory_size = 10000
 observations = torch.zeros(memory_size, observation_space, dtype=torch.float)
-actions = torch.zeros(memory_size, dtype=torch.uint8)
-rewards = torch.zeros(memory_size, dtype=torch.float)
+actions = torch.zeros(memory_size, 1, dtype=torch.long)
+rewards = torch.zeros(memory_size, 1, dtype=torch.float)
 next_observations = torch.zeros(memory_size, observation_space, dtype=torch.float)
-dones = torch.zeros(memory_size, dtype=torch.uint8)
+dones = torch.zeros(memory_size, 1, dtype=torch.uint8)
 
 step = 0
 last_rewards = deque(maxlen=100)
@@ -50,7 +50,7 @@ for episode in range(episodes):
                 action = agent(torch.Tensor(observation)).argmax(dim=0).item()
             else:
                 action = env.action_space.sample()
-        actions[memory_index] = torch.tensor(action, dtype=torch.uint8)
+        actions[memory_index] = torch.tensor(action, dtype=torch.long)
         observation, reward, terminated, truncated, _ = env.step(action)
         rewards[memory_index] = torch.tensor(reward, dtype=torch.float)
         next_observations[memory_index] = torch.tensor(observation, dtype=torch.float)
@@ -59,13 +59,9 @@ for episode in range(episodes):
         batch_size = 64
         if step >= batch_size and step % 4 == 0:
             rnd = torch.randint(0, min(step, memory_size), (batch_size,))
-            with torch.no_grad():
-                future_rewards = target(next_observations.index_select(0, rnd)).detach()
-                current_rewards = agent(observations.index_select(0, rnd)).detach()
-            for i in range(batch_size):
-                current_rewards[i][actions.index_select(0, rnd)[i].item()] = rewards.index_select(0, rnd)[i].item() + gamma * future_rewards[i].max().item() * (1 - dones.index_select(0, rnd)[i].item())
-
-            pred = agent(observations.index_select(0, rnd))
+            future_rewards = target(next_observations.index_select(0, rnd)).detach().max(1)[0].unsqueeze(1)
+            current_rewards = rewards.index_select(0, rnd) + gamma * future_rewards * (1 - dones.index_select(0, rnd))
+            pred = agent(observations.index_select(0, rnd)).gather(1, actions.index_select(0, rnd))
             loss = loss_fn(pred, current_rewards)
             loss.backward()
             torch.nn.utils.clip_grad_value_(agent.parameters(), 100)
