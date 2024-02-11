@@ -7,10 +7,9 @@ from torch import nn
 
 from q_network import QNetwork
 
-agent = QNetwork()
-target = QNetwork()
-agent.load_state_dict(torch.load("model_new"))
-target.load_state_dict(torch.load("model_new"))
+agent = QNetwork(8, 4)
+target = QNetwork(8, 4)
+target.load_state_dict(agent.state_dict())
 loss_fn = nn.SmoothL1Loss()
 optimizer = torch.optim.AdamW(agent.parameters(), lr=1e-4, amsgrad=True)
 
@@ -102,5 +101,5 @@ for episode in range(episodes):
     if avg >= best_last_rewards:
         best_last_rewards = avg
         best_model = agent.state_dict()
-        torch.save(agent.state_dict(), "model_new")
+        torch.save(agent.state_dict(), "model")
 env.close()

@@ -6,8 +6,8 @@ from q_network import QNetwork
 env = gym.make("LunarLander-v2", render_mode="human")
 
 
-agent = QNetwork()
-agent.load_state_dict(torch.load("model_new"))
+agent = QNetwork(8, 4)
+agent.load_state_dict(torch.load("model"))
 
 episodes = 10
 total_reward = 0.0
