@@ -9,8 +9,8 @@ from q_network import QNetwork
 agent = QNetwork(8, 4)
 target = QNetwork(8, 4)
 target.load_state_dict(agent.state_dict())
-loss_fn = nn.SmoothL1Loss()
-optimizer = torch.optim.AdamW(agent.parameters(), lr=1e-4, amsgrad=True)
+loss_fn = nn.functional.mse_loss
+optimizer = torch.optim.Adam(agent.parameters(), lr=5e-4)
 
 from collections import deque
 import gymnasium as gym
@@ -52,7 +52,7 @@ for episode in range(episodes):
         next_observations.append(observation)
         dones.append(int(terminated or truncated))
 
-        batch_size = 128
+        batch_size = 64
         if len(observations) >= batch_size and step % 4 == 0:
             batch_observations = []
             batch_actions = []
@@ -84,7 +84,7 @@ for episode in range(episodes):
             target_state_dict = target.state_dict()
             agent_state_dict = agent.state_dict()
             for key in agent_state_dict:
-                target_state_dict[key] = agent_state_dict[key] * 0.005 + target_state_dict[key] * (1 - 0.005)
+                target_state_dict[key] = agent_state_dict[key] * 0.001 + target_state_dict[key] * (1 - 0.001)
             target.load_state_dict(target_state_dict)
 
         episode_reward += reward
@@ -98,7 +98,7 @@ for episode in range(episodes):
         avg = numpy.mean(last_rewards)
         if episode % 10 == 0:
             print(episode, avg)
-        if avg >= best_last_rewards:
-            best_last_rewards = avg
-            best_model = agent.state_dict()
+        if avg >= 200.0:
+            print("Solved in {} episodes".format(episode))
             torch.save(agent.state_dict(), "model")
+            break
