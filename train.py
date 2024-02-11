@@ -71,15 +71,14 @@ for episode in range(episodes):
                 batch_dones.append(dones[rnd])
 
             with torch.no_grad():
-                future_rewards = target(torch.Tensor(numpy.stack(batch_next_observations, axis=0)))
-                current_rewards = agent(torch.Tensor(numpy.stack(batch_observations, axis=0)))
+                future_rewards = target(torch.Tensor(numpy.stack(batch_next_observations, axis=0))).detach()
+                current_rewards = agent(torch.Tensor(numpy.stack(batch_observations, axis=0))).detach()
             for i in range(batch_size):
                 current_rewards[i][batch_actions[i]] = batch_rewards[i] + 0.99 * future_rewards[i].max().item() * (1 - batch_dones[i])
 
             pred = agent(torch.Tensor(numpy.stack(batch_observations, axis=0)))
             loss = loss_fn(pred, current_rewards)
             loss.backward()
-            torch.nn.utils.clip_grad_value_(agent.parameters(), 100)
             optimizer.step()
             optimizer.zero_grad()
 
@@ -95,11 +94,11 @@ for episode in range(episodes):
         if terminated or truncated:
             last_rewards.append(episode_reward)
             break
-    avg = numpy.mean(last_rewards)
-    if episode % 100 == 0:
-        print(episode, avg)
-    if avg >= best_last_rewards:
-        best_last_rewards = avg
-        best_model = agent.state_dict()
-        torch.save(agent.state_dict(), "model")
-env.close()
+    if episode >= 100:
+        avg = numpy.mean(last_rewards)
+        if episode % 100 == 0:
+            print(episode, avg)
+        if avg >= best_last_rewards:
+            best_last_rewards = avg
+            best_model = agent.state_dict()
+            torch.save(agent.state_dict(), "model")
