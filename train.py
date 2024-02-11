@@ -52,7 +52,7 @@ for episode in range(episodes):
         next_observations.append(observation)
         dones.append(int(terminated or truncated))
 
-        batch_size = 64
+        batch_size = 128
         if len(observations) >= batch_size and step % 4 == 0:
             batch_observations = []
             batch_actions = []
@@ -77,13 +77,14 @@ for episode in range(episodes):
             pred = agent(torch.Tensor(numpy.stack(batch_observations, axis=0)))
             loss = loss_fn(pred, current_rewards)
             loss.backward()
+            torch.nn.utils.clip_grad_value_(agent.parameters(), 100)
             optimizer.step()
             optimizer.zero_grad()
 
             target_state_dict = target.state_dict()
             agent_state_dict = agent.state_dict()
             for key in agent_state_dict:
-                target_state_dict[key] = agent_state_dict[key] * 0.001 + target_state_dict[key] * (1 - 0.001)
+                target_state_dict[key] = agent_state_dict[key] * 0.005 + target_state_dict[key] * (1 - 0.005)
             target.load_state_dict(target_state_dict)
 
         episode_reward += reward
@@ -95,7 +96,7 @@ for episode in range(episodes):
             break
     if episode >= 100:
         avg = numpy.mean(last_rewards)
-        if episode % 100 == 0:
+        if episode % 10 == 0:
             print(episode, avg)
         if avg >= best_last_rewards:
             best_last_rewards = avg
