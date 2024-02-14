@@ -1,8 +1,6 @@
 import random
-import numpy
 import torch
 from torch import nn
-from collections import deque
 import gymnasium as gym
 from q_network import QNetwork
 
@@ -38,9 +36,24 @@ rewards = torch.zeros(memory_size, 1, dtype=torch.float, device=device)
 next_observations = torch.zeros(memory_size, observation_space, dtype=torch.float, device=device)
 dones = torch.zeros(memory_size, 1, dtype=torch.uint8, device=device)
 
+
+def evaluate(agent, episodes):
+    total_reward = 0
+    for i in range(episodes):
+        observation, _ = env.reset()
+        while True:
+            with torch.no_grad():
+                actions = agent(torch.tensor(observation, device=device, dtype=torch.float))
+            action = actions.argmax(dim=0).item()
+            observation, reward, terminated, truncated, _ = env.step(action)
+            total_reward += reward
+            if terminated or truncated:
+                break
+    return total_reward / episodes
+
+
 step = 0
-last_rewards = deque(maxlen=100)
-best_last_rewards = float("-inf")
+best_model = float("-inf")
 for episode in range(episodes):
     episode_reward = 0.0
     observation, _ = env.reset()
@@ -80,14 +93,12 @@ for episode in range(episodes):
 
         step += 1
         if terminated or truncated:
-            last_rewards.append(episode_reward)
             eps = max(eps_end, eps_decay * eps)
             break
-    if episode >= 100:
-        avg = numpy.mean(last_rewards)
-        if episode % 10 == 0:
-            print(episode, avg)
-        if avg >= 230.0:
-            print("Solved in {} episodes".format(episode))
-            torch.save(agent.state_dict(), "model")
-            break
+    if episode_reward > best_model:
+        print(episode, episode_reward, best_model)
+        if evaluate(agent, 3) > best_model and evaluate(agent, 7) > best_model and evaluate(agent, 20) > best_model:
+            current_model = evaluate(agent, 70)
+            if current_model > best_model:
+                best_model = current_model
+                torch.save(agent.state_dict(), "model")
