@@ -49,7 +49,7 @@ for episode in range(episodes):
         observations[memory_index] = torch.tensor(observation, dtype=torch.float)
         with torch.no_grad():
             if random.random() > eps:
-                action = agent(torch.tensor(observation, device=device)).argmax(dim=0).item()
+                action = agent(observations[memory_index]).argmax(dim=0).item()
             else:
                 action = env.action_space.sample()
         actions[memory_index] = torch.tensor(action, dtype=torch.long)
