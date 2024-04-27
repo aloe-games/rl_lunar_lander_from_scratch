@@ -7,7 +7,7 @@ env = gym.make("LunarLander-v2", render_mode="human")
 
 
 agent = QNetwork(8, 4)
-agent.load_state_dict(torch.load("model"))
+agent.load_state_dict(torch.load("model", map_location=torch.device('cpu')))
 
 episodes = 10
 total_reward = 0.0
