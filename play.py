@@ -1,21 +1,20 @@
 import gymnasium as gym
 import torch
-
-from q_network import QNetwork
+import numpy as np
 
 env = gym.make("LunarLander-v2", render_mode="human")
 
 
-agent = QNetwork(8, 4)
-agent.load_state_dict(torch.load("model"))
+agent = torch.load("model")
+weight = agent.state_dict()['network.weight'].numpy()
+bias = agent.state_dict()['network.bias'].numpy()
 
 episodes = 10
 total_reward = 0.0
 for i in range(episodes):
     observation, _ = env.reset()
     while True:
-        actions = agent(torch.tensor(observation))
-        action = actions.argmax(dim=0).item()
+        action = np.argmax(np.matmul(observation, weight.T) + bias)
         observation, reward, terminated, truncated, _ = env.step(action)
 
         total_reward += reward
