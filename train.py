@@ -1,3 +1,4 @@
+import pickle
 import random
 import torch
 from torch import nn
@@ -101,4 +102,4 @@ for episode in range(episodes):
             current_model = evaluate(agent, 70)
             if current_model > best_model:
                 best_model = current_model
-                torch.save(agent, "model", _use_new_zipfile_serialization=False)
+                pickle.dump(agent.state_dict(), open("model.pickle", "wb"))
