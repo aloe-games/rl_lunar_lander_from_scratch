@@ -1,13 +1,14 @@
+import pickle
+
 import gymnasium as gym
-import torch
 import numpy as np
 
 env = gym.make("LunarLander-v2", render_mode="human")
 
 
-agent = torch.load("model")
-weight = agent.state_dict()['network.weight'].numpy()
-bias = agent.state_dict()['network.bias'].numpy()
+model = pickle.load(open("model.pickle", "rb"))
+weight = model["network.weight"].numpy()
+bias = model["network.bias"].numpy()
 
 episodes = 10
 total_reward = 0.0
