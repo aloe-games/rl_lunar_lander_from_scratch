@@ -101,4 +101,4 @@ for episode in range(episodes):
             current_model = evaluate(agent, 70)
             if current_model > best_model:
                 best_model = current_model
-                torch.save(agent.state_dict(), "model")
+                torch.save(agent.state_dict(), "model", _use_new_zipfile_serialization=False)
