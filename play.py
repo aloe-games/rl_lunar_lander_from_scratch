@@ -6,9 +6,9 @@ import numpy as np
 env = gym.make("LunarLander-v2", render_mode="human")
 
 
-model = pickle.load(open("model.pickle", "rb"))
-weight = model["network.weight"].numpy()
-bias = model["network.bias"].numpy()
+model = pickle.load(open("model", "rb"))
+weight = model["network.weight"]
+bias = model["network.bias"]
 
 episodes = 10
 total_reward = 0.0
