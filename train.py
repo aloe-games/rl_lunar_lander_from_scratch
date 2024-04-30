@@ -102,4 +102,4 @@ for episode in range(episodes):
             current_model = evaluate(agent, 70)
             if current_model > best_model:
                 best_model = current_model
-                pickle.dump({k: v.numpy() for k, v in agent.state_dict().items()}, open("model", "wb"))
+                pickle.dump({k: v.numpy() for k, v in agent.state_dict().items()}, open("model.pickle", "wb"))

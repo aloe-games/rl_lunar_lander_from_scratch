@@ -6,7 +6,7 @@ import numpy as np
 env = gym.make("LunarLander-v2", render_mode="human")
 
 
-model = pickle.load(open("model", "rb"))
+model = pickle.load(open("model.pickle", "rb"))
 weight = model["network.weight"]
 bias = model["network.bias"]
 
