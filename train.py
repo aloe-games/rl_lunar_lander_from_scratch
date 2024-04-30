@@ -1,3 +1,4 @@
+import os
 import pickle
 import random
 import torch
@@ -16,13 +17,10 @@ eps = eps_start
 batch_size = 64
 gamma = 0.99
 lr = 5e-4
-tau = 0.001
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-agent = QNetwork(observation_space, action_space).to(device)
-target = QNetwork(observation_space, action_space).to(device)
-target.load_state_dict(agent.state_dict())
+agent = QNetwork(observation_space, action_space)
+if os.path.exists("model"):
+    agent.load_state_dict(torch.load("model"))
 loss_fn = nn.functional.mse_loss
 optimizer = torch.optim.Adam(agent.parameters(), lr=lr)
 
@@ -31,11 +29,11 @@ env = gym.make("LunarLander-v2")
 episodes = 10000
 
 memory_size = 10000
-observations = torch.zeros(memory_size, observation_space, dtype=torch.float, device=device)
-actions = torch.zeros(memory_size, 1, dtype=torch.long, device=device)
-rewards = torch.zeros(memory_size, 1, dtype=torch.float, device=device)
-next_observations = torch.zeros(memory_size, observation_space, dtype=torch.float, device=device)
-dones = torch.zeros(memory_size, 1, dtype=torch.uint8, device=device)
+observations = torch.zeros(memory_size, observation_space, dtype=torch.float)
+actions = torch.zeros(memory_size, 1, dtype=torch.long)
+rewards = torch.zeros(memory_size, 1, dtype=torch.float)
+next_observations = torch.zeros(memory_size, observation_space, dtype=torch.float)
+dones = torch.zeros(memory_size, 1, dtype=torch.uint8)
 
 
 def evaluate(agent, episodes):
@@ -44,7 +42,7 @@ def evaluate(agent, episodes):
         observation, _ = env.reset()
         while True:
             with torch.no_grad():
-                actions = agent(torch.tensor(observation, device=device, dtype=torch.float))
+                actions = agent(torch.tensor(observation, dtype=torch.float))
             action = actions.argmax(dim=0).item()
             observation, reward, terminated, truncated, _ = env.step(action)
             total_reward += reward
@@ -54,7 +52,7 @@ def evaluate(agent, episodes):
 
 
 step = 0
-best_model = float("-inf")
+best_model = evaluate(agent, 10)
 for episode in range(episodes):
     episode_reward = 0.0
     observation, _ = env.reset()
@@ -74,8 +72,9 @@ for episode in range(episodes):
 
         batch_size = 64
         if step >= batch_size and step % 4 == 0:
-            rnd = torch.randint(0, min(step, memory_size), (batch_size,)).to(device)
-            future_rewards = target(next_observations.index_select(0, rnd)).detach().max(1)[0].unsqueeze(1)
+            rnd = torch.randint(0, min(step, memory_size), (batch_size,))
+            with torch.no_grad():
+                future_rewards = agent(next_observations.index_select(0, rnd)).detach().max(1)[0].unsqueeze(1)
             current_rewards = rewards.index_select(0, rnd) + gamma * future_rewards * (1 - dones.index_select(0, rnd))
             pred = agent(observations.index_select(0, rnd)).gather(1, actions.index_select(0, rnd))
             loss = loss_fn(pred, current_rewards)
@@ -83,12 +82,6 @@ for episode in range(episodes):
             torch.nn.utils.clip_grad_value_(agent.parameters(), 100)
             optimizer.step()
             optimizer.zero_grad()
-
-            target_state_dict = target.state_dict()
-            agent_state_dict = agent.state_dict()
-            for key in agent_state_dict:
-                target_state_dict[key] = agent_state_dict[key] * tau + target_state_dict[key] * (1 - tau)
-            target.load_state_dict(target_state_dict)
 
         episode_reward += reward
 
@@ -98,8 +91,9 @@ for episode in range(episodes):
             break
     if episode_reward > best_model:
         print(episode, episode_reward, best_model)
-        if evaluate(agent, 3) > best_model and evaluate(agent, 7) > best_model and evaluate(agent, 20) > best_model:
-            current_model = evaluate(agent, 70)
+        if evaluate(agent, 1) > best_model and evaluate(agent, 3) > best_model and evaluate(agent, 6) > best_model:
+            current_model = evaluate(agent, 10)
             if current_model > best_model:
                 best_model = current_model
+                torch.save(agent.state_dict(), "model")
                 pickle.dump({k: v.numpy() for k, v in agent.state_dict().items()}, open("model.pickle", "wb"))
