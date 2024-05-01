@@ -1,7 +1,7 @@
 import os
+import pickle
 
 import gymnasium as gym
-import numpy as np
 from itertools import count
 from collections import deque
 import torch
@@ -14,7 +14,7 @@ class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
         self.network = nn.Sequential(
-            nn.Linear(8, 128), nn.ReLU(), nn.Linear(128, 128), nn.ReLU(), nn.Linear(128, 4), nn.Softmax()
+            nn.Linear(8, 4), nn.Softmax()
         )
 
         self.saved_log_probs = []
@@ -28,8 +28,7 @@ gamma = 0.99
 policy = Policy()
 if os.path.exists("model-reinforce"):
     policy.load_state_dict(torch.load("model-reinforce"))
-optimizer = optim.Adam(policy.parameters(), lr=5e-4)
-eps = np.finfo(np.float32).eps.item()
+optimizer = optim.Adam(policy.parameters())
 
 
 def select_action(state):
@@ -49,13 +48,11 @@ def finish_episode():
         R = r + gamma * R
         returns.appendleft(R)
     returns = torch.tensor(returns)
-    returns = (returns - returns.mean()) / (returns.std() + eps)
     for log_prob, R in zip(policy.saved_log_probs, returns):
         policy_loss.append(-log_prob * R)
     optimizer.zero_grad()
     policy_loss = torch.cat(policy_loss).sum()
     policy_loss.backward()
-    torch.nn.utils.clip_grad_value_(policy.parameters(), 100)
     optimizer.step()
     del policy.rewards[:]
     del policy.saved_log_probs[:]
@@ -63,7 +60,7 @@ def finish_episode():
 
 env = gym.make("LunarLander-v2")
 running_reward = 10
-best_reward = -np.inf
+best_reward = -300
 for i_episode in count(1):
     state, _ = env.reset()
     ep_reward = 0
@@ -78,8 +75,8 @@ for i_episode in count(1):
     running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
     finish_episode()
     if i_episode % 10 == 0:
-        print("Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}".format(i_episode, ep_reward, running_reward))
+        print("Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\tBest reward: {:.2f}".format(i_episode, ep_reward, running_reward, best_reward))
     if running_reward >= best_reward:
         best_reward = running_reward
-        print("New best model! Running reward is now {}".format(running_reward))
         torch.save(policy.state_dict(), "model-reinforce")
+        pickle.dump({k: v.numpy() for k, v in policy.state_dict().items()}, open("model-reinforce.pickle", "wb"))
