@@ -120,48 +120,43 @@ def finish_episode():
     del model.saved_actions[:]
 
 
-def main():
-    running_reward = 10
+running_reward = 10
 
-    # run infinitely many episodes
-    for i_episode in count(1):
+# run infinitely many episodes
+for i_episode in count(1):
 
-        # reset environment and episode reward
-        state, _ = env.reset()
-        ep_reward = 0
+    # reset environment and episode reward
+    state, _ = env.reset()
+    ep_reward = 0
 
-        # for each episode, only run 9999 steps so that we don't
-        # infinite loop while learning
-        for t in range(1, 10000):
+    # for each episode, only run 9999 steps so that we don't
+    # infinite loop while learning
+    for t in range(1, 10000):
 
-            # select action from policy
-            action = select_action(state)
+        # select action from policy
+        action = select_action(state)
 
-            # take the action
-            state, reward, terminated, truncated, _ = env.step(action)
+        # take the action
+        state, reward, terminated, truncated, _ = env.step(action)
 
-            model.rewards.append(reward)
-            ep_reward += reward
-            if terminated or truncated:
-                break
-
-        # update cumulative reward
-        running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
-
-        # perform backprop
-        finish_episode()
-
-        # log results
-        if i_episode % 10 == 0:
-            print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
-                  i_episode, ep_reward, running_reward))
-
-        # check if we have "solved" the cart pole problem
-        if running_reward > env.spec.reward_threshold:
-            print("Solved! Running reward is now {} and "
-                  "the last episode runs to {} time steps!".format(running_reward, t))
+        model.rewards.append(reward)
+        ep_reward += reward
+        if terminated or truncated:
             break
 
+    # update cumulative reward
+    running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
 
-if __name__ == '__main__':
-    main()
+    # perform backprop
+    finish_episode()
+
+    # log results
+    if i_episode % 10 == 0:
+        print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
+              i_episode, ep_reward, running_reward))
+
+    # check if we have "solved" the cart pole problem
+    if running_reward > env.spec.reward_threshold:
+        print("Solved! Running reward is now {} and "
+              "the last episode runs to {} time steps!".format(running_reward, t))
+        break
