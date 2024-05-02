@@ -1,3 +1,5 @@
+import pickle
+
 import gymnasium as gym
 import numpy as np
 from itertools import count
@@ -156,9 +158,10 @@ for i_episode in count(1):
         print("Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}".format(i_episode, ep_reward, running_reward))
 
     # check if we have "solved" the cart pole problem
-    if running_reward > env.spec.reward_threshold:
+    if running_reward > 230:
         print(
             "Solved! Running reward is now {} and " "the last episode runs to {} time steps!".format(running_reward, t)
         )
         torch.save(model.state_dict(), "model-actor-critic")
+        pickle.dump({k: v.numpy() for k, v in model.state_dict().items()}, open("model-actor-critic.pickle", "wb"))
         break
