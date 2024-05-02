@@ -12,25 +12,26 @@ from torch.distributions import Categorical
 gamma = 0.99
 
 
-env = gym.make('CartPole-v1')
+env = gym.make("LunarLander-v2")
 
 
-SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
+SavedAction = namedtuple("SavedAction", ["log_prob", "value"])
 
 
 class Policy(nn.Module):
     """
     implements both actor and critic in one model
     """
+
     def __init__(self):
         super(Policy, self).__init__()
-        self.affine1 = nn.Linear(4, 128)
+        self.affine1 = nn.Linear(8, 128)
 
         # actor's layer
-        self.action_head = nn.Linear(128, 2)
+        self.action_head = nn.Linear(128, 4)
 
         # critic's layer
-        self.value_head = nn.Linear(128, 1)
+        self.value_head = nn.Linear(128, 4)
 
         # action & reward buffer
         self.saved_actions = []
@@ -56,7 +57,7 @@ class Policy(nn.Module):
 
 
 model = Policy()
-optimizer = optim.Adam(model.parameters(), lr=3e-2)
+optimizer = optim.Adam(model.parameters())
 eps = np.finfo(np.float32).eps.item()
 
 
@@ -83,9 +84,9 @@ def finish_episode():
     """
     R = 0
     saved_actions = model.saved_actions
-    policy_losses = [] # list to save actor (policy) loss
-    value_losses = [] # list to save critic (value) loss
-    returns = [] # list to save the true values
+    policy_losses = []  # list to save actor (policy) loss
+    value_losses = []  # list to save critic (value) loss
+    returns = []  # list to save the true values
 
     # calculate the true value using rewards returned from the environment
     for r in model.rewards[::-1]:
@@ -97,13 +98,13 @@ def finish_episode():
     returns = (returns - returns.mean()) / (returns.std() + eps)
 
     for (log_prob, value), R in zip(saved_actions, returns):
-        advantage = R - value.item()
+        advantage = R - torch.tensor(value.tolist())
 
         # calculate actor (policy) loss
         policy_losses.append(-log_prob * advantage)
 
         # calculate critic (value) loss using L1 smooth loss
-        value_losses.append(F.smooth_l1_loss(value, torch.tensor([R])))
+        value_losses.append(F.smooth_l1_loss(value, torch.tensor([R] * len(value))))
 
     # reset gradients
     optimizer.zero_grad()
@@ -152,11 +153,12 @@ for i_episode in count(1):
 
     # log results
     if i_episode % 10 == 0:
-        print('Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}'.format(
-              i_episode, ep_reward, running_reward))
+        print("Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}".format(i_episode, ep_reward, running_reward))
 
     # check if we have "solved" the cart pole problem
     if running_reward > env.spec.reward_threshold:
-        print("Solved! Running reward is now {} and "
-              "the last episode runs to {} time steps!".format(running_reward, t))
+        print(
+            "Solved! Running reward is now {} and " "the last episode runs to {} time steps!".format(running_reward, t)
+        )
+        torch.save(model.state_dict(), "model-actor-critic")
         break

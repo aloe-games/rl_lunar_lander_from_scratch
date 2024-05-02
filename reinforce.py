@@ -13,9 +13,7 @@ from torch.distributions import Categorical
 class Policy(nn.Module):
     def __init__(self):
         super(Policy, self).__init__()
-        self.network = nn.Sequential(
-            nn.Linear(8, 4), nn.Softmax()
-        )
+        self.network = nn.Sequential(nn.Linear(8, 4), nn.Softmax())
 
         self.saved_log_probs = []
         self.rewards = []
@@ -75,7 +73,11 @@ for i_episode in count(1):
     running_reward = 0.05 * ep_reward + (1 - 0.05) * running_reward
     finish_episode()
     if i_episode % 10 == 0:
-        print("Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\tBest reward: {:.2f}".format(i_episode, ep_reward, running_reward, best_reward))
+        print(
+            "Episode {}\tLast reward: {:.2f}\tAverage reward: {:.2f}\tBest reward: {:.2f}".format(
+                i_episode, ep_reward, running_reward, best_reward
+            )
+        )
     if running_reward >= best_reward:
         best_reward = running_reward
         torch.save(policy.state_dict(), "model-reinforce")
