@@ -25,13 +25,13 @@ class Policy(nn.Module):
 
     def __init__(self):
         super(Policy, self).__init__()
-        self.affine1 = nn.Linear(8, 128)
+        self.affine1 = nn.Linear(8, 8)
 
         # actor's layer
-        self.action_head = nn.Linear(128, 4)
+        self.action_head = nn.Linear(8, 4)
 
         # critic's layer
-        self.value_head = nn.Linear(128, 4)
+        self.value_head = nn.Linear(8, 4)
 
         # action & reward buffer
         self.saved_actions = []
