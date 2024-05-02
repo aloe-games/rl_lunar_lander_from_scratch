@@ -33,7 +33,7 @@ class Policy(nn.Module):
         self.action_head = nn.Linear(8, 4)
 
         # critic's layer
-        self.value_head = nn.Linear(8, 4)
+        self.value_head = nn.Linear(8, 1)
 
         # action & reward buffer
         self.saved_actions = []
@@ -100,13 +100,13 @@ def finish_episode():
     returns = (returns - returns.mean()) / (returns.std() + eps)
 
     for (log_prob, value), R in zip(saved_actions, returns):
-        advantage = R - torch.tensor(value.tolist())
+        advantage = R - value.item()
 
         # calculate actor (policy) loss
         policy_losses.append(-log_prob * advantage)
 
         # calculate critic (value) loss using L1 smooth loss
-        value_losses.append(F.smooth_l1_loss(value, torch.tensor([R] * len(value))))
+        value_losses.append(F.smooth_l1_loss(value, torch.tensor([R])))
 
     # reset gradients
     optimizer.zero_grad()
